@@ -38,13 +38,13 @@ void feature_normalize2(image im)
 int tests_total = 0;
 int tests_fail = 0;
 
-int within_eps(float a, float b){
-    return a-EPS<b && b<a+EPS;
+int within_eps(float a, float b, float eps){
+    return a-eps<b && b<a+eps;
 }
 
-int same_point(point p, point q)
+int same_point(point p, point q, float eps)
 {
-    return within_eps(p.x, q.x) && within_eps(p.y, q.y);
+    return within_eps(p.x, q.x, eps) && within_eps(p.y, q.y, eps);
 }
 
 int same_matrix(matrix m, matrix n)
@@ -53,22 +53,25 @@ int same_matrix(matrix m, matrix n)
     int i,j;
     for(i = 0; i < m.rows; ++i){
         for(j = 0; j < m.cols; ++j){
-            if(!within_eps(m.data[i][j], n.data[i][j])) return 0;
+            if(!within_eps(m.data[i][j], n.data[i][j], EPS)) return 0;
         }
     }
     return 1;
 }
 
-int same_image(image a, image b){
+int same_image(image a, image b, float eps)
+{
     int i;
     if(a.w != b.w || a.h != b.h || a.c != b.c) {
         //printf("Expected %d x %d x %d image, got %d x %d x %d\n", b.w, b.h, b.c, a.w, a.h, a.c);
         return 0;
     }
     for(i = 0; i < a.w*a.h*a.c; ++i){
-        if(!within_eps(a.data[i], b.data[i])) 
+        float thresh = (fabs(b.data[i]) + fabs(a.data[i])) * eps / 2;
+        if (thresh > eps) eps = thresh;
+        if(!within_eps(a.data[i], b.data[i], eps)) 
         {
-            //printf("The value should be %f, but it is %f! \n", b.data[i], a.data[i]);
+            printf("The value should be %f, but it is %f! \n", b.data[i], a.data[i]);
             return 0;
         }
     }
@@ -78,15 +81,15 @@ int same_image(image a, image b){
 void test_get_pixel(){
     image im = load_image("data/dots.png");
     // Test within image
-    TEST(within_eps(0, get_pixel(im, 0,0,0)));
-    TEST(within_eps(1, get_pixel(im, 1,0,1)));
-    TEST(within_eps(0, get_pixel(im, 2,0,1)));
+    TEST(within_eps(0, get_pixel(im, 0,0,0), EPS));
+    TEST(within_eps(1, get_pixel(im, 1,0,1), EPS));
+    TEST(within_eps(0, get_pixel(im, 2,0,1), EPS));
 
     // Test padding
-    TEST(within_eps(1, get_pixel(im, 0,3,1)));
-    TEST(within_eps(1, get_pixel(im, 7,8,0)));
-    TEST(within_eps(0, get_pixel(im, 7,8,1)));
-    TEST(within_eps(1, get_pixel(im, 7,8,2)));
+    TEST(within_eps(1, get_pixel(im, 0,3,1), EPS));
+    TEST(within_eps(1, get_pixel(im, 7,8,0), EPS));
+    TEST(within_eps(0, get_pixel(im, 7,8,1), EPS));
+    TEST(within_eps(1, get_pixel(im, 7,8,2), EPS));
     free_image(im);
 }
 
@@ -104,7 +107,7 @@ void test_set_pixel(){
     set_pixel(d, 3,1,0,1); set_pixel(d, 3,1,1,0); set_pixel(d, 3,1,2,1); 
 
     // Test images are same
-    TEST(same_image(d, gt));
+    TEST(same_image(d, gt, EPS));
     free_image(gt);
     free_image(d);
 }
@@ -114,7 +117,7 @@ void test_grayscale()
     image im = load_image("data/colorbar.png");
     image gray = rgb_to_grayscale(im);
     image gt = load_image("figs/gray.png");
-    TEST(same_image(gray, gt));
+    TEST(same_image(gray, gt, EPS));
     free_image(im);
     free_image(gray);
     free_image(gt);
@@ -124,7 +127,7 @@ void test_copy()
 {
     image gt = load_image("data/dog.jpg");
     image c = copy_image(gt);
-    TEST(same_image(c, gt));
+    TEST(same_image(c, gt, EPS));
     free_image(gt);
     free_image(c);
 }
@@ -143,7 +146,7 @@ void test_clamp()
     set_pixel(c, 130, 105, 2, 0);
     set_pixel(c, im.w-1, im.h-1, im.c-1, 0);
     clamp_image(im);
-    TEST(same_image(c, im));
+    TEST(same_image(c, im, EPS));
     free_image(im);
     free_image(c);
 }
@@ -153,10 +156,10 @@ void test_shift()
     image im = load_image("data/dog.jpg");
     image c = copy_image(im);
     shift_image(c, 1, .1);
-    TEST(within_eps(c.data[0], im.data[0]));
-    TEST(within_eps(c.data[im.w*im.h + 13], im.data[im.w*im.h+13] + .1));
-    TEST(within_eps(c.data[2*im.w*im.h + 72], im.data[2*im.w*im.h+72]));
-    TEST(within_eps(c.data[im.w*im.h + 47], im.data[im.w*im.h+47] + .1));
+    TEST(within_eps(c.data[0], im.data[0], EPS));
+    TEST(within_eps(c.data[im.w*im.h + 13], im.data[im.w*im.h+13] + .1, EPS));
+    TEST(within_eps(c.data[2*im.w*im.h + 72], im.data[2*im.w*im.h+72], EPS));
+    TEST(within_eps(c.data[im.w*im.h + 47], im.data[im.w*im.h+47] + .1, EPS));
     free_image(im);
     free_image(c);
 }
@@ -166,7 +169,7 @@ void test_rgb_to_hsv()
     image im = load_image("data/dog.jpg");
     rgb_to_hsv(im);
     image hsv = load_image("figs/dog.hsv.png");
-    TEST(same_image(im, hsv));
+    TEST(same_image(im, hsv, EPS));
     free_image(im);
     free_image(hsv);
 }
@@ -177,7 +180,7 @@ void test_hsv_to_rgb()
     image c = copy_image(im);
     rgb_to_hsv(im);
     hsv_to_rgb(im);
-    TEST(same_image(im, c));
+    TEST(same_image(im, c, EPS));
     free_image(im);
     free_image(c);
 }
@@ -185,20 +188,20 @@ void test_hsv_to_rgb()
 void test_nn_interpolate()
 {
     image im = load_image("data/dogsmall.jpg");
-    TEST(within_eps(nn_interpolate(im, -.5, -.5, 0)  , 0.231373));
-    TEST(within_eps(nn_interpolate(im, -.5, .5, 1)   , 0.239216));
-    TEST(within_eps(nn_interpolate(im, .499, .5, 2)  , 0.207843));
-    TEST(within_eps(nn_interpolate(im, 14.2, 15.9, 1), 0.690196));
+    TEST(within_eps(nn_interpolate(im, -.5, -.5, 0)  , 0.231373, EPS));
+    TEST(within_eps(nn_interpolate(im, -.5, .5, 1)   , 0.239216, EPS));
+    TEST(within_eps(nn_interpolate(im, .499, .5, 2)  , 0.207843, EPS));
+    TEST(within_eps(nn_interpolate(im, 14.2, 15.9, 1), 0.690196, EPS));
     free_image(im);
 }
 
 void test_bl_interpolate()
 {
     image im = load_image("data/dogsmall.jpg");
-    TEST(within_eps(bilinear_interpolate(im, -.5, -.5, 0)  , 0.231373));
-    TEST(within_eps(bilinear_interpolate(im, -.5, .5, 1)   , 0.237255));
-    TEST(within_eps(bilinear_interpolate(im, .499, .5, 2)  , 0.206861));
-    TEST(within_eps(bilinear_interpolate(im, 14.2, 15.9, 1), 0.678588));
+    TEST(within_eps(bilinear_interpolate(im, -.5, -.5, 0)  , 0.231373, EPS));
+    TEST(within_eps(bilinear_interpolate(im, -.5, .5, 1)   , 0.237255, EPS));
+    TEST(within_eps(bilinear_interpolate(im, .499, .5, 2)  , 0.206861, EPS));
+    TEST(within_eps(bilinear_interpolate(im, 14.2, 15.9, 1), 0.678588, EPS));
 }
 
 
@@ -208,7 +211,7 @@ void test_nn_resize()
     image im = load_image("data/dogsmall.jpg");
     image resized = nn_resize(im, im.w*4, im.h*4);
     image gt = load_image("figs/dog4x-nn-for-test.png");
-    TEST(same_image(resized, gt));
+    TEST(same_image(resized, gt, EPS));
     free_image(im);
     free_image(resized);
     free_image(gt);
@@ -216,7 +219,7 @@ void test_nn_resize()
     image im2 = load_image("data/dog.jpg");
     image resized2 = nn_resize(im2, 713, 467);
     image gt2 = load_image("figs/dog-resize-nn.png");
-    TEST(same_image(resized2, gt2));
+    TEST(same_image(resized2, gt2, EPS));
     free_image(im2);
     free_image(resized2);
     free_image(gt2);
@@ -227,7 +230,7 @@ void test_bl_resize()
     image im = load_image("data/dogsmall.jpg");
     image resized = bilinear_resize(im, im.w*4, im.h*4);
     image gt = load_image("figs/dog4x-bl.png");
-    TEST(same_image(resized, gt));
+    TEST(same_image(resized, gt, EPS));
     free_image(im);
     free_image(resized);
     free_image(gt);
@@ -235,7 +238,7 @@ void test_bl_resize()
     image im2 = load_image("data/dog.jpg");
     image resized2 = bilinear_resize(im2, 713, 467);
     image gt2 = load_image("figs/dog-resize-bil.png");
-    TEST(same_image(resized2, gt2));
+    TEST(same_image(resized2, gt2, EPS));
     free_image(im2);
     free_image(resized2);
     free_image(gt2);
@@ -253,7 +256,7 @@ void test_multiple_resize()
         im = im2;
     }
     image gt = load_image("figs/dog-multipleresize.png");
-    TEST(same_image(im, gt));
+    TEST(same_image(im, gt, EPS));
     free_image(im);
     free_image(gt);
 }
@@ -267,7 +270,7 @@ void test_highpass_filter(){
 
     
     image gt = load_image("figs/dog-highpass.png");
-    TEST(same_image(blur, gt));
+    TEST(same_image(blur, gt, EPS));
     free_image(im);
     free_image(f);
     free_image(blur);
@@ -282,7 +285,7 @@ void test_emboss_filter(){
 
     
     image gt = load_image("figs/dog-emboss.png");
-    TEST(same_image(blur, gt));
+    TEST(same_image(blur, gt, EPS));
     free_image(im);
     free_image(f);
     free_image(blur);
@@ -297,7 +300,7 @@ void test_sharpen_filter(){
 
 
     image gt = load_image("figs/dog-sharpen.png");
-    TEST(same_image(blur, gt));
+    TEST(same_image(blur, gt, EPS));
     free_image(im);
     free_image(f);
     free_image(blur);
@@ -311,7 +314,7 @@ void test_convolution(){
     clamp_image(blur);
 
     image gt = load_image("figs/dog-box7.png");
-    TEST(same_image(blur, gt));
+    TEST(same_image(blur, gt, EPS));
     free_image(im);
     free_image(f);
     free_image(blur);
@@ -327,7 +330,7 @@ void test_gaussian_filter(){
     }
 
     image gt = load_image("figs/gaussian_filter_7.png");
-    TEST(same_image(f, gt));    
+    TEST(same_image(f, gt, EPS));
     free_image(f);
     free_image(gt);
 }
@@ -339,7 +342,7 @@ void test_gaussian_blur(){
     clamp_image(blur);
 
     image gt = load_image("figs/dog-gauss2.png");
-    TEST(same_image(blur, gt));    
+    TEST(same_image(blur, gt, EPS));
     free_image(im);
     free_image(f);
     free_image(blur);
@@ -356,7 +359,7 @@ void test_hybrid_image(){
     image reconstruct = add_image(lfreq_m , hfreq_a);
     image gt = load_image("figs/hybrid.png");
     clamp_image(reconstruct);
-    TEST(same_image(reconstruct, gt));
+    TEST(same_image(reconstruct, gt, EPS));
     free_image(melisa);
     free_image(aria);
     free_image(f);
@@ -379,9 +382,9 @@ void test_frequency_image(){
 
     clamp_image(lfreq);
     clamp_image(hfreq);
-    TEST(same_image(lfreq, low_freq));
-    TEST(same_image(hfreq, high_freq));
-    TEST(same_image(reconstruct, im));
+    TEST(same_image(lfreq, low_freq, EPS));
+    TEST(same_image(hfreq, high_freq, EPS));
+    TEST(same_image(reconstruct, im, EPS));
     free_image(im);
     free_image(f);
     free_image(lfreq);
@@ -409,18 +412,18 @@ void test_sobel(){
         gt_mag.c != mag.c || gt_theta.c != theta.c ) return;
     int i;
     for(i = 0; i < gt_mag.w*gt_mag.h; ++i){
-        if(within_eps(gt_mag.data[i], 0)){
+        if(within_eps(gt_mag.data[i], 0, EPS)){
             gt_theta.data[i] = 0;
             theta.data[i] = 0;
         }
-        if(within_eps(gt_theta.data[i], 0) || within_eps(gt_theta.data[i], 1)){
+        if(within_eps(gt_theta.data[i], 0, EPS) || within_eps(gt_theta.data[i], 1, EPS)){
             gt_theta.data[i] = 0;
             theta.data[i] = 0;
         }
     }
 
-    TEST(same_image(mag, gt_mag));
-    TEST(same_image(theta, gt_theta));
+    TEST(same_image(mag, gt_mag, EPS));
+    TEST(same_image(theta, gt_theta, EPS));
     free_image(im);
     free_image(mag);
     free_image(theta);
@@ -435,7 +438,7 @@ void test_structure()
     image s = structure_matrix(im, 2);
     feature_normalize2(s);
     image gt = load_image("figs/structure.png");
-    TEST(same_image(s, gt));
+    TEST(same_image(s, gt, EPS));
     free_image(im);
     free_image(s);
     free_image(gt);
@@ -448,7 +451,7 @@ void test_cornerness()
     image c = cornerness_response(s);
     feature_normalize2(c);
     image gt = load_image("figs/response.png");
-    TEST(same_image(c, gt));
+    TEST(same_image(c, gt, EPS));
     free_image(im);
     free_image(s);
     free_image(c);
@@ -460,7 +463,7 @@ void test_cornerness()
 void test_projection()
 {
     matrix H = make_translation_homography(12.4, -3.2);
-    TEST(same_point(project_point(H, make_point(0,0)), make_point(12.4, -3.2)));
+    TEST(same_point(project_point(H, make_point(0,0)), make_point(12.4, -3.2), EPS));
     free_matrix(H);
 
     H = make_identity_homography();
@@ -474,7 +477,7 @@ void test_projection()
     H.data[2][1] = 1.87;
     H.data[2][2] = .112;
     point p = project_point(H, make_point(3.14, 1.59));
-    TEST(same_point(p, make_point(-0.66544, 0.326017)));
+    TEST(same_point(p, make_point(-0.66544, 0.326017), EPS));
     free_matrix(H);
 }
 
@@ -751,19 +754,19 @@ void test_integral_image()
     image dots = load_image("data/dots.png");
     image intdot = make_integral_image(dots);
     image intdot_t = load_image_binary("data/dotsintegral.bin");
-    TEST(same_image(intdot, intdot_t));
+    TEST(same_image(intdot, intdot_t, EPS));
 
     image dog = load_image("data/dogbw.png");
     image intdog = make_integral_image(dog);
     image intdog_t = load_image_binary("data/dogintegral.bin");
-    TEST(same_image(intdog, intdog_t));
+    TEST(same_image(intdog, intdog_t, .6));
 }
 void test_exact_box_filter_image()
 {
     image dog = load_image("data/dog.jpg");
     image smooth = box_filter_image(dog, 15);
     image smooth_t = load_image("data/dogbox.png");
-    TEST(same_image(smooth, smooth_t));
+    TEST(same_image(smooth, smooth_t, EPS*2));
 }
 void test_good_enough_box_filter_image()
 {
@@ -771,7 +774,7 @@ void test_good_enough_box_filter_image()
     image smooth = box_filter_image(dog, 15);
     image smooth_c = center_crop(smooth);
     image smooth_t = load_image("data/dogboxcenter.png");
-    TEST(same_image(smooth_c, smooth_t));
+    TEST(same_image(smooth_c, smooth_t, EPS*2));
 }
 void test_structure_image()
 {
@@ -779,14 +782,14 @@ void test_structure_image()
     image dogb = load_image("data/dog_b_small.jpg");
     image structure = time_structure_matrix(dogb, doga, 15);
     image structure_t = load_image_binary("data/structure.bin");
-    TEST(same_image(center_crop(structure), center_crop(structure_t)));
+    TEST(same_image(center_crop(structure), center_crop(structure_t), EPS));
 }
 void test_velocity_image()
 {
     image structure = load_image_binary("data/structure.bin");
     image velocity = velocity_image(structure, 5);
     image velocity_t = load_image_binary("data/velocity.bin");
-    TEST(same_image(velocity, velocity_t));
+    TEST(same_image(velocity, velocity_t, EPS));
 }
 void test_hw4()
 {

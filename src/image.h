@@ -57,7 +57,7 @@ void shift_image(image im, int c, float v);
 void scale_image(image im, int c, float v);
 void clamp_image(image im);
 image get_channel(image im, int c);
-int same_image(image a, image b);
+int same_image(image a, image b, float eps);
 image sub_image(image a, image b);
 image add_image(image a, image b);
 

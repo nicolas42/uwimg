@@ -768,6 +768,17 @@ void test_exact_box_filter_image()
     image smooth_t = load_image("data/dogbox.png");
     TEST(same_image(smooth, smooth_t, EPS*2));
 }
+
+float avg_diff(image a, image b)
+{
+    float diff = 0;
+    int i;
+    for(i = 0; i < a.w*a.h*a.c; ++i){
+        diff += b.data[i] - a.data[i];
+    }
+    return diff/(a.w*a.h*a.c);
+}
+
 void test_good_enough_box_filter_image()
 {
     image dog = load_image("data/dog.jpg");
@@ -775,6 +786,7 @@ void test_good_enough_box_filter_image()
     image smooth_c = center_crop(smooth);
     image smooth_t = load_image("data/dogboxcenter.png");
     TEST(same_image(smooth_c, smooth_t, EPS*2));
+    printf("avg smooth difference: %f\n", avg_diff(smooth_c, smooth_t));
 }
 void test_structure_image()
 {

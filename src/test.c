@@ -7,6 +7,17 @@
 #include "test.h"
 #include "args.h"
 
+
+float avg_diff(image a, image b)
+{
+    float diff = 0;
+    int i;
+    for(i = 0; i < a.w*a.h*a.c; ++i){
+        diff += b.data[i] - a.data[i];
+    }
+    return diff/(a.w*a.h*a.c);
+}
+
 image center_crop(image im)
 {
     image c = make_image(im.w/2, im.h/2, im.c);
@@ -766,17 +777,9 @@ void test_exact_box_filter_image()
     image dog = load_image("data/dog.jpg");
     image smooth = box_filter_image(dog, 15);
     image smooth_t = load_image("data/dogbox.png");
+    //printf("avg origin difference test: %f\n", avg_diff(smooth, dog));
+    //printf("avg smooth difference test: %f\n", avg_diff(smooth, smooth_t));
     TEST(same_image(smooth, smooth_t, EPS*2));
-}
-
-float avg_diff(image a, image b)
-{
-    float diff = 0;
-    int i;
-    for(i = 0; i < a.w*a.h*a.c; ++i){
-        diff += b.data[i] - a.data[i];
-    }
-    return diff/(a.w*a.h*a.c);
 }
 
 void test_good_enough_box_filter_image()

@@ -785,8 +785,9 @@ void test_good_enough_box_filter_image()
     image smooth = box_filter_image(dog, 15);
     image smooth_c = center_crop(smooth);
     image smooth_t = load_image("data/dogboxcenter.png");
+    printf("avg origin difference test: %f\n", avg_diff(smooth_c, center_crop(dog)));
+    printf("avg smooth difference test: %f\n", avg_diff(smooth_c, smooth_t));
     TEST(same_image(smooth_c, smooth_t, EPS*2));
-    printf("avg smooth difference: %f\n", avg_diff(smooth_c, smooth_t));
 }
 void test_structure_image()
 {
